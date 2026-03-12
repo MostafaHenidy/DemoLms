@@ -1,0 +1,490 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model account {
+  id                Int      @id @default(autoincrement())
+  provider          String
+  providerAccountId String
+  userId            Int
+  createdAt         DateTime @default(now())
+  user              user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Account_userId_fkey")
+
+  @@unique([provider, providerAccountId], map: "Account_provider_providerAccountId_key")
+  @@index([userId], map: "Account_userId_fkey")
+}
+
+model achievement {
+  id                 Int     @id @default(autoincrement())
+  key                String  @unique(map: "Achievement_key_key")
+  titleAr            String
+  titleEn            String
+  descriptionAr      String?
+  descriptionEn      String?
+  targetCourses      Int?
+  targetCertificates Int?
+  targetStreakDays   Int?
+}
+
+model admin {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique(map: "Admin_email_key")
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+}
+
+model attendance {
+  id            Int                      @id @default(autoincrement())
+  teacherId     Int
+  courseId      Int
+  userId        Int
+  sessionType   attendance_sessionType   @default(offline)
+  sessionDate   DateTime
+  sessionTime   String?
+  price         Int?
+  paymentStatus attendance_paymentStatus @default(unpaid)
+  paidAmount    Int?
+  treasuryId    Int?
+  paymentMethod String?
+  createdAt     DateTime                 @default(now())
+  user          user                     @relation(fields: [teacherId], references: [id], onDelete: Cascade, map: "Attendance_teacherId_fkey")
+
+  @@index([teacherId], map: "Attendance_teacherId_fkey")
+}
+
+model cartitem {
+  id       Int      @id @default(autoincrement())
+  userId   Int
+  courseId Int
+  addedAt  DateTime @default(now())
+  course   course   @relation(fields: [courseId], references: [id], onDelete: Cascade, map: "CartItem_courseId_fkey")
+  user     user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "CartItem_userId_fkey")
+
+  @@unique([userId, courseId], map: "CartItem_userId_courseId_key")
+  @@index([courseId], map: "CartItem_courseId_fkey")
+}
+
+model category {
+  id             Int        @id @default(autoincrement())
+  nameAr         String
+  nameEn         String
+  slug           String     @unique(map: "Category_slug_key")
+  parentId       Int?
+  order          Int        @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime
+  category       category?  @relation("categoryTocategory", fields: [parentId], references: [id], map: "Category_parentId_fkey")
+  other_category category[] @relation("categoryTocategory")
+  course         course[]
+
+  @@index([parentId], map: "Category_parentId_fkey")
+}
+
+model country {
+  id        Int      @id @default(autoincrement())
+  nameAr    String
+  nameEn    String
+  code      String?  @unique(map: "Country_code_key")
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+}
+
+model coupon {
+  id            Int                 @id @default(autoincrement())
+  code          String              @unique(map: "Coupon_code_key")
+  discountType  coupon_discountType @default(percentage)
+  discountValue Int
+  maxUses       Int?                @default(1)
+  usedCount     Int                 @default(0)
+  expiresAt     DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime
+}
+
+model course {
+  id            Int             @id @default(autoincrement())
+  slug          String          @unique(map: "Course_slug_key")
+  titleAr       String
+  titleEn       String
+  instructorAr  String
+  instructorEn  String
+  rating        Float
+  students      Int
+  price         Int
+  originalPrice Int
+  category      String
+  level         String
+  hours         Int
+  lessons       Int
+  sections      Int
+  updatedAt     DateTime
+  instructorId  Int?
+  isFeatured    Boolean         @default(false)
+  status        String          @default("published")
+  categoryId    Int?
+  coverImageUrl String?
+  cartitem      cartitem[]
+  categoryRef   category?       @relation(fields: [categoryId], references: [id], map: "Course_categoryId_fkey")
+  user          user?           @relation(fields: [instructorId], references: [id], map: "Course_instructorId_fkey")
+  coursesection coursesection[]
+  enrollment    enrollment[]
+  payment       payment[]
+  wishlistitem  wishlistitem[]
+
+  @@index([categoryId], map: "Course_categoryId_fkey")
+  @@index([instructorId], map: "Course_instructorId_fkey")
+}
+
+model courselesson {
+  id                  Int           @id @default(autoincrement())
+  sectionId           Int
+  order               Int           @default(0)
+  titleAr             String
+  titleEn             String
+  duration            String?
+  videoUrl            String?       // video link (YouTube, etc.)
+  videoPath           String?       // uploaded video file path
+  examId        Int?
+  homeworkId    Int?
+  createdAt     DateTime      @default(now())
+  coursesection coursesection @relation(fields: [sectionId], references: [id], onDelete: Cascade, map: "CourseLesson_sectionId_fkey")
+  exam          exam?         @relation(fields: [examId], references: [id], onDelete: SetNull, map: "CourseLesson_examId_fkey")
+  homework      homework?     @relation(fields: [homeworkId], references: [id], onDelete: SetNull, map: "CourseLesson_homeworkId_fkey")
+  attachments   lessonattachment[]
+
+  @@index([sectionId], map: "CourseLesson_sectionId_fkey")
+  @@index([examId], map: "CourseLesson_examId_fkey")
+  @@index([homeworkId], map: "CourseLesson_homeworkId_fkey")
+}
+
+model lessonattachment {
+  id          Int          @id @default(autoincrement())
+  lessonId    Int
+  type        String       // pdf, word
+  path        String       // file path in uploads
+  originalName String
+  createdAt   DateTime     @default(now())
+  courselesson courselesson @relation(fields: [lessonId], references: [id], onDelete: Cascade, map: "LessonAttachment_lessonId_fkey")
+
+  @@index([lessonId], map: "LessonAttachment_lessonId_fkey")
+}
+
+model exam {
+  id            Int              @id @default(autoincrement())
+  titleAr       String
+  titleEn       String
+  courseId      Int?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime
+  lessons       courselesson[]
+  questions     examquestion[]
+  submissions   examsubmission[]
+}
+
+model examquestion {
+  id            Int      @id @default(autoincrement())
+  examId        Int
+  order         Int      @default(0)
+  type          String   // mcq, true_false, text, file
+  questionTextAr String
+  questionTextEn String
+  options       String?  // JSON array for MCQ: ["A","B","C","D"]
+  correctAnswer String?  // JSON: for mcq index, for true_false "true"/"false"
+  points        Int      @default(1)
+  createdAt     DateTime @default(now())
+  exam          exam     @relation(fields: [examId], references: [id], onDelete: Cascade, map: "ExamQuestion_examId_fkey")
+  answers       examsubmissionanswer[]
+
+  @@index([examId], map: "ExamQuestion_examId_fkey")
+}
+
+model examsubmission {
+  id          Int      @id @default(autoincrement())
+  examId      Int
+  userId      Int
+  status      String   @default("submitted") // draft, submitted, graded
+  totalScore  Int?
+  maxScore    Int?
+  gradedBy    Int?
+  gradedAt    DateTime?
+  feedback    String?
+  submittedAt DateTime @default(now())
+  exam        exam     @relation(fields: [examId], references: [id], onDelete: Cascade, map: "ExamSubmission_examId_fkey")
+  user        user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "ExamSubmission_userId_fkey")
+  answers     examsubmissionanswer[]
+
+  @@index([examId], map: "ExamSubmission_examId_fkey")
+  @@index([userId], map: "ExamSubmission_userId_fkey")
+}
+
+model examsubmissionanswer {
+  id           Int             @id @default(autoincrement())
+  submissionId Int
+  questionId   Int
+  textAnswer   String?
+  filePath     String?
+  selectedAnswer String?       // for mcq/true_false
+  score        Int?
+  feedback     String?
+  examsubmission examsubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade, map: "ExamSubmissionAnswer_submissionId_fkey")
+  examquestion  examquestion   @relation(fields: [questionId], references: [id], onDelete: Cascade, map: "ExamSubmissionAnswer_questionId_fkey")
+
+  @@unique([submissionId, questionId], map: "ExamSubmissionAnswer_submissionId_questionId_key")
+  @@index([submissionId], map: "ExamSubmissionAnswer_submissionId_fkey")
+  @@index([questionId], map: "ExamSubmissionAnswer_questionId_fkey")
+}
+
+model homework {
+  id          Int           @id @default(autoincrement())
+  titleAr     String
+  titleEn     String
+  courseId    Int?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime
+  lessons     courselesson[]
+  questions   homeworkquestion[]
+  submissions homeworksubmission[]
+}
+
+model homeworkquestion {
+  id            Int      @id @default(autoincrement())
+  homeworkId    Int
+  order         Int      @default(0)
+  type          String   // mcq, true_false, text, file
+  questionTextAr String
+  questionTextEn String
+  options       String?  // JSON array for MCQ
+  correctAnswer String?
+  points        Int      @default(1)
+  createdAt     DateTime @default(now())
+  homework      homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade, map: "HomeworkQuestion_homeworkId_fkey")
+  answers       homeworksubmissionanswer[]
+
+  @@index([homeworkId], map: "HomeworkQuestion_homeworkId_fkey")
+}
+
+model homeworksubmission {
+  id          Int      @id @default(autoincrement())
+  homeworkId  Int
+  userId      Int
+  status      String   @default("submitted")
+  totalScore  Int?
+  maxScore    Int?
+  gradedBy    Int?
+  gradedAt    DateTime?
+  feedback    String?
+  submittedAt DateTime @default(now())
+  homework    homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade, map: "HomeworkSubmission_homeworkId_fkey")
+  user        user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "HomeworkSubmission_userId_fkey")
+  answers     homeworksubmissionanswer[]
+
+  @@index([homeworkId], map: "HomeworkSubmission_homeworkId_fkey")
+  @@index([userId], map: "HomeworkSubmission_userId_fkey")
+}
+
+model homeworksubmissionanswer {
+  id             Int                 @id @default(autoincrement())
+  submissionId   Int
+  questionId     Int
+  textAnswer     String?
+  filePath       String?
+  selectedAnswer String?
+  score          Int?
+  feedback       String?
+  homeworksubmission homeworksubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade, map: "HomeworkSubmissionAnswer_submissionId_fkey")
+  homeworkquestion  homeworkquestion   @relation(fields: [questionId], references: [id], onDelete: Cascade, map: "HomeworkSubmissionAnswer_questionId_fkey")
+
+  @@unique([submissionId, questionId], map: "HomeworkSubmissionAnswer_submissionId_questionId_key")
+  @@index([submissionId], map: "HomeworkSubmissionAnswer_submissionId_fkey")
+  @@index([questionId], map: "HomeworkSubmissionAnswer_questionId_fkey")
+}
+
+model coursesection {
+  id           Int            @id @default(autoincrement())
+  courseId     Int
+  order        Int            @default(0)
+  titleAr      String
+  titleEn      String
+  createdAt    DateTime       @default(now())
+  courselesson courselesson[]
+  course       course         @relation(fields: [courseId], references: [id], onDelete: Cascade, map: "CourseSection_courseId_fkey")
+
+  @@index([courseId], map: "CourseSection_courseId_fkey")
+}
+
+model enrollment {
+  id          Int               @id @default(autoincrement())
+  userId      Int
+  courseId    Int
+  status      enrollment_status @default(ACTIVE)
+  purchasedAt DateTime          @default(now())
+  course      course            @relation(fields: [courseId], references: [id], onDelete: Cascade, map: "Enrollment_courseId_fkey")
+  user        user              @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Enrollment_userId_fkey")
+
+  @@unique([userId, courseId], map: "Enrollment_userId_courseId_key")
+  @@index([courseId], map: "Enrollment_courseId_fkey")
+}
+
+model event {
+  id          Int      @id @default(autoincrement())
+  titleAr     String
+  titleEn     String
+  timeLabelAr String
+  timeLabelEn String
+  createdAt   DateTime @default(now())
+}
+
+model instructor {
+  id            Int      @id @default(autoincrement())
+  nameAr        String
+  nameEn        String
+  titleAr       String
+  titleEn       String
+  avatarUrl     String
+  coursesCount  Int
+  studentsCount Int
+  rating        Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime
+}
+
+model notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  titleAr   String
+  titleEn   String
+  bodyAr    String?
+  bodyEn    String?
+  createdAt DateTime @default(now())
+  user      user?    @relation(fields: [userId], references: [id], map: "Notification_userId_fkey")
+
+  @@index([userId], map: "Notification_userId_fkey")
+}
+
+model payment {
+  id        Int            @id @default(autoincrement())
+  userId    Int
+  courseId  Int
+  amount    Int
+  status    payment_status @default(pending)
+  itemType  String         @default("course")
+  itemId    Int?
+  itemName  String?
+  userName  String?
+  userEmail String?
+  createdAt DateTime       @default(now())
+  course    course         @relation(fields: [courseId], references: [id], onDelete: Cascade, map: "Payment_courseId_fkey")
+  user      user           @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Payment_userId_fkey")
+
+  @@index([courseId], map: "Payment_courseId_fkey")
+  @@index([userId], map: "Payment_userId_fkey")
+}
+
+model teachersalarysettings {
+  id                Int                                     @id @default(autoincrement())
+  teacherId         Int                                     @unique(map: "TeacherSalarySettings_teacherId_key")
+  workType          teachersalarysettings_workType          @default(both)
+  calculationMethod teachersalarysettings_calculationMethod @default(fixed_per_session)
+  fixedAmount       Int?
+  percentage        Float?
+  fixedBaseAmount   Int?
+  percentageOnTop   Float?
+  createdAt         DateTime                                @default(now())
+  updatedAt         DateTime
+}
+
+model user {
+  id           Int            @id @default(autoincrement())
+  name         String
+  email        String         @unique(map: "User_email_key")
+  avatarUrl    String?
+  passwordHash String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime
+  bio          String?
+  city         String?
+  phone        String?
+  role         user_role      @default(student)
+  status       String         @default("active")
+  titleAr      String?
+  titleEn      String?
+  category     String?
+  country      String?
+  parentNumber String?
+  account            account[]
+  attendance         attendance[]
+  cartitem           cartitem[]
+  course             course[]
+  enrollment         enrollment[]
+  examsubmission     examsubmission[]
+  homeworksubmission homeworksubmission[]
+  notification       notification[]
+  payment            payment[]
+  wishlistitem       wishlistitem[]
+}
+
+model wishlistitem {
+  id       Int      @id @default(autoincrement())
+  userId   Int
+  courseId Int
+  addedAt  DateTime @default(now())
+  course   course   @relation(fields: [courseId], references: [id], onDelete: Cascade, map: "WishlistItem_courseId_fkey")
+  user     user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "WishlistItem_userId_fkey")
+
+  @@unique([userId, courseId], map: "WishlistItem_userId_courseId_key")
+  @@index([courseId], map: "WishlistItem_courseId_fkey")
+}
+
+enum coupon_discountType {
+  percentage
+  fixed
+}
+
+enum teachersalarysettings_workType {
+  offline
+  online
+  both
+}
+
+enum enrollment_status {
+  ACTIVE
+  CANCELLED
+  REFUNDED
+}
+
+enum teachersalarysettings_calculationMethod {
+  fixed_per_session
+  percentage
+  fixed_plus_percentage
+}
+
+enum attendance_sessionType {
+  offline
+  online
+}
+
+enum payment_status {
+  pending
+  completed
+  failed
+  refunded
+}
+
+enum attendance_paymentStatus {
+  paid
+  partial
+  unpaid
+}
+
+enum user_role {
+  student
+  instructor
+  admin
+  super_admin
+}
