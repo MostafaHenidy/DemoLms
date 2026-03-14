@@ -22,6 +22,8 @@ import {
   Bell,
   Search,
   Star,
+  Video,
+  MessageCircle,
 } from "lucide-react"
 import { useI18n } from "@/lib/i18n"
 import { useStore } from "@/lib/store"
@@ -30,6 +32,8 @@ import { Button } from "@/components/ui/button"
 const sidebarItems = [
   { key: "overview", path: "/dashboard", icon: LayoutDashboard, color: "from-[#2563EB] to-[#3B82F6]" },
   { key: "myCourses", path: "/dashboard/courses", icon: BookOpen, color: "from-[#0EA5E9] to-[#38BDF8]" },
+  { key: "liveSessions", path: "/dashboard/live-sessions", icon: Video, color: "from-[#10B981] to-[#34D399]" },
+  { key: "chat", path: "/dashboard/chat", icon: MessageCircle, color: "from-[#6366F1] to-[#818CF8]" },
   { key: "certificates", path: "/dashboard/certificates", icon: Award, color: "from-[#8B5CF6] to-[#A78BFA]" },
   { key: "achievements", path: "/dashboard/achievements", icon: Star, color: "from-amber-400 to-orange-500" },
   { key: "profile", path: "/dashboard/profile", icon: User, color: "from-[#F59E0B] to-[#FBBF24]" },

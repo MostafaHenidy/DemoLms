@@ -11,6 +11,10 @@ interface Payment {
   amount: number
   status: string
   createdAt: string
+  gateway?: string | null
+  couponCode?: string | null
+  discountAmount?: number | null
+  transactionId?: string | null
   user?: { name: string; email: string }
   course?: { titleAr: string }
 }
@@ -22,17 +26,32 @@ const statusLabels: Record<string, string> = {
   refunded: "مسترد",
 }
 
+const gatewayLabels: Record<string, string> = {
+  cart: "سلة الشراء",
+  stripe: "Stripe",
+  moyasar: "Moyasar",
+  tamara: "Tamara",
+}
+
 export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [gatewayFilter, setGatewayFilter] = useState<string>("")
 
   useEffect(() => {
     const fetchPayments = async () => {
       setLoading(true)
       try {
-        const res = await fetch(`/api/admin/payments?page=${page}&limit=10`)
+        const params = new URLSearchParams({ page: String(page), limit: "10" })
+        if (gatewayFilter) params.set("gateway", gatewayFilter)
+        const res = await fetch(`/api/admin/payments?${params}`)
+        if (res.status === 401) {
+          setPayments([])
+          setTotalPages(1)
+          return
+        }
         const data = await res.json()
         setPayments(data.payments || [])
         setTotalPages(data.pagination?.totalPages || 1)
@@ -43,7 +62,7 @@ export default function AdminPaymentsPage() {
       }
     }
     fetchPayments()
-  }, [page])
+  }, [page, gatewayFilter])
 
   const columns: Column<Payment>[] = [
     {
@@ -64,7 +83,27 @@ export default function AdminPaymentsPage() {
     {
       key: "amount",
       header: "المبلغ",
-      cell: (row) => `${row.amount.toLocaleString("ar-SA")} ريال`,
+      cell: (row) => (
+        <div>
+          <span>{row.amount.toLocaleString("ar-SA")} ريال</span>
+          {row.discountAmount != null && row.discountAmount > 0 && (
+            <p className="text-xs text-muted-foreground">
+              خصم: {row.discountAmount.toLocaleString("ar-SA")} ريال
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "gateway",
+      header: "بوابة الدفع",
+      cell: (row) =>
+        row.gateway ? gatewayLabels[row.gateway] ?? row.gateway : "—",
+    },
+    {
+      key: "coupon",
+      header: "كود الخصم",
+      cell: (row) => row.couponCode ?? "—",
     },
     {
       key: "status",
@@ -79,13 +118,29 @@ export default function AdminPaymentsPage() {
       key: "date",
       header: "التاريخ",
       cell: (row) =>
-        format(new Date(row.createdAt), "dd MMM yyyy", { locale: ar }),
+        format(new Date(row.createdAt), "dd MMM yyyy HH:mm", { locale: ar }),
     },
   ]
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold text-foreground">المدفوعات</h2>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="text-xl font-bold text-foreground">المدفوعات</h2>
+        <select
+          value={gatewayFilter}
+          onChange={(e) => {
+            setGatewayFilter(e.target.value)
+            setPage(1)
+          }}
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+        >
+          <option value="">كل بوابات الدفع</option>
+          <option value="cart">سلة الشراء</option>
+          <option value="stripe">Stripe</option>
+          <option value="moyasar">Moyasar</option>
+          <option value="tamara">Tamara</option>
+        </select>
+      </div>
 
       <DataTable<Payment>
         columns={columns}
@@ -94,7 +149,7 @@ export default function AdminPaymentsPage() {
         emptyState={{
           icon: "payments",
           title: "لا توجد مدفوعات",
-          description: "لم يتم تسجيل أي مدفوعات بعد.",
+          description: "جميع المدفوعات (الاشتراكات مع كوبون أو عبر بوابات الدفع) تظهر هنا.",
         }}
         pagination={{
           page,

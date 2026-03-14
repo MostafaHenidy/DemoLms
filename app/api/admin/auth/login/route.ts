@@ -79,6 +79,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
   } catch (error) {
     console.error("Admin login error", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const isPoolOrConnectionError =
+      error instanceof Error &&
+      (error.name === "DriverAdapterError" ||
+        error.message?.includes("pool timeout") ||
+        error.message?.includes("ECONNREFUSED") ||
+        error.message?.includes("connect"))
+    const message = isPoolOrConnectionError
+      ? "تعذر الاتصال بقاعدة البيانات. تأكد من تشغيل MySQL (Xامب) ثم أعد المحاولة."
+      : "Internal server error"
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

@@ -1,12 +1,13 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { ArrowLeft, ArrowRight, Sparkles, BookOpen, TrendingUp, GraduationCap } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { useI18n } from "@/lib/i18n"
 import { coursesData } from "@/lib/data"
-import CourseCard from "./course-card"
+import CourseCard, { type CourseData } from "./course-card"
 
 // Deterministic values to avoid hydration mismatch (Math.random differs server vs client)
 const particles = Array.from({ length: 8 }, (_, i) => ({
@@ -20,7 +21,22 @@ const particles = Array.from({ length: 8 }, (_, i) => ({
 
 export default function CoursesSection() {
   const { t, dir, locale } = useI18n()
-  const displayedCourses = coursesData.slice(0, 6)
+  const [apiCourses, setApiCourses] = useState<CourseData[]>([])
+
+  useEffect(() => {
+    fetch("/api/courses?limit=20")
+      .then((r) => r.json())
+      .then((data) => {
+        const list = (data.courses ?? []) as CourseData[]
+        const byId = new Map<string, CourseData>()
+        list.forEach((c) => byId.set(c.id, c))
+        setApiCourses(Array.from(byId.values()))
+      })
+      .catch(() => setApiCourses([]))
+  }, [])
+
+  const sourceCourses = apiCourses.length > 0 ? apiCourses : coursesData
+  const displayedCourses = sourceCourses.slice(0, 6)
   const isRTL = dir === "rtl"
   const ArrowIcon = isRTL ? ArrowLeft : ArrowRight
 
@@ -171,8 +187,8 @@ export default function CoursesSection() {
         >
           <p className="mb-5 text-sm text-[#64748B]">
             {locale === "ar"
-              ? `عرض ${displayedCourses.length} من ${coursesData.length} دورة متاحة`
-              : `Showing ${displayedCourses.length} of ${coursesData.length} available courses`}
+              ? `عرض ${displayedCourses.length} من ${sourceCourses.length} دورة متاحة`
+              : `Showing ${displayedCourses.length} of ${sourceCourses.length} available courses`}
           </p>
           <Button
             asChild

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import { prisma } from "@/lib/prisma"
+import { getPrismaClient } from "@/lib/prisma"
 
 export async function POST(request: Request) {
   try {
@@ -14,6 +14,7 @@ export async function POST(request: Request) {
       )
     }
 
+    const prisma = getPrismaClient()
     const existing = await prisma.user.findUnique({
       where: { email: String(email).trim().toLowerCase() },
     })
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
+    const prisma = getPrismaClient()
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get("page") || "1", 10)
     const limit = Math.min(parseInt(searchParams.get("limit") || "10", 10), 100)
@@ -66,15 +68,16 @@ export async function GET(request: Request) {
 
     const where: Record<string, unknown> = {}
 
-    if (role) {
+    const validRoles = ["student", "instructor", "admin", "super_admin"]
+    if (role && validRoles.includes(role)) {
       where.role = role
     }
 
-    if (status) {
+    if (status && String(status).trim()) {
       where.status = status
     }
 
-    if (search) {
+    if (search && search.length > 0) {
       where.OR = [
         { name: { contains: search } },
         { email: { contains: search } },
@@ -104,7 +107,14 @@ export async function GET(request: Request) {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     })
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
     console.error("Users API error", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        ...(process.env.NODE_ENV === "development" && { detail: message }),
+      },
+      { status: 500 }
+    )
   }
 }

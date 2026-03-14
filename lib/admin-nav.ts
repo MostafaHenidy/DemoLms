@@ -45,15 +45,7 @@ export const adminNavItems: NavItem[] = [
       { label: "موافقة الدورات", path: "/admin/courses/pending" },
     ],
   },
-  {
-    label: "بنك البيانات",
-    path: "/admin/databank",
-    icon: Database,
-    children: [
-      { label: "جميع الموارد", path: "/admin/databank" },
-      { label: "إضافة مورد", path: "/admin/databank/new" },
-    ],
-  },
+  { label: "بنك البيانات", path: "/admin/databank", icon: Database },
   {
     label: "الاختبارات",
     path: "/admin/exams",

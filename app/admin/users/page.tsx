@@ -161,7 +161,7 @@ export default function AdminUsersPage() {
             >
               عرض التفاصيل
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/admin/chat")}>
+            <DropdownMenuItem onClick={() => router.push(`/admin/chat?studentId=${row.id}`)}>
               إرسال رسالة
             </DropdownMenuItem>
             <DropdownMenuSeparator />

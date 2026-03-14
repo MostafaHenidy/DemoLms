@@ -12,8 +12,25 @@ function createPrisma(): PrismaClient {
   if (!url) {
     throw new Error("DATABASE_URL is not set. Add it to .env in the demolms folder.")
   }
+  // Pass pool config object so mariadb driver gets connectionLimit + connectTimeout (avoids long pool timeout when DB is unreachable)
+  let adapterConfig: Record<string, unknown> | string
+  try {
+    const u = new URL(url.replace(/^mysql:\/\//, "http://"))
+    adapterConfig = {
+      host: u.hostname || "localhost",
+      port: u.port ? parseInt(u.port, 10) : 3306,
+      user: u.username || undefined,
+      password: u.password ? decodeURIComponent(u.password) : undefined,
+      database: u.pathname?.replace(/^\//, "").replace(/\/$/, "") || undefined,
+      connectionLimit: 5,
+      connectTimeout: 6000,
+    }
+  } catch {
+    const sep = url.includes("?") ? "&" : "?"
+    adapterConfig = `${url}${sep}connectionLimit=5&connectTimeout=6000`
+  }
   return new PC({
-    adapter: new PrismaMariaDb(url),
+    adapter: new PrismaMariaDb(adapterConfig as never),
     log: ["error", "warn"],
   })
 }

@@ -143,7 +143,7 @@ export function Navbar() {
                 <span>{locale === "ar" ? "EN" : "عر"}</span>
               </motion.button>
 
-              <Link href="/cart">
+              <Link href="/cart" className="relative inline-flex">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -151,13 +151,12 @@ export function Navbar() {
                 >
                   <ShoppingCart className="w-[18px] h-[18px]" />
                   {cartCount > 0 && (
-                    <motion.span
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute -top-1.5 -end-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#2563EB] text-[10px] font-bold text-white shadow-lg shadow-[#2563EB]/30"
+                    <span
+                      key={cartCount}
+                      className="absolute -top-1.5 -end-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#2563EB] text-[10px] font-bold text-white shadow-lg shadow-[#2563EB]/30 min-w-[20px]"
                     >
                       {cartCount}
-                    </motion.span>
+                    </span>
                   )}
                 </motion.div>
               </Link>
@@ -254,11 +253,13 @@ export function Navbar() {
               <motion.button whileTap={{ scale: 0.9 }} onClick={toggleLocale} suppressHydrationWarning className="flex items-center justify-center w-10 h-10 rounded-xl text-[#64748B] hover:text-[#2563EB] hover:bg-[#2563EB]/5 transition-colors">
                 <Globe className="w-5 h-5" />
               </motion.button>
-              <Link href="/cart">
+              <Link href="/cart" className="relative inline-flex">
                 <div className="relative flex items-center justify-center w-10 h-10 rounded-xl text-[#64748B] hover:text-[#2563EB] hover:bg-[#2563EB]/5 transition-colors">
                   <ShoppingCart className="w-5 h-5" />
                   {cartCount > 0 && (
-                    <span className="absolute -top-0.5 -end-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#2563EB] text-[9px] font-bold text-white">{cartCount}</span>
+                    <span key={cartCount} className="absolute -top-0.5 -end-0.5 flex h-4 w-4 min-w-[16px] items-center justify-center rounded-full bg-[#2563EB] text-[9px] font-bold text-white">
+                      {cartCount}
+                    </span>
                   )}
                 </div>
               </Link>

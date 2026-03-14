@@ -6,7 +6,7 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import { AdminTopbar } from "@/components/admin/admin-topbar"
 import { getAdminUser } from "@/lib/admin-auth"
 import { getAdminPageTitle } from "@/lib/admin-route-titles"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -72,6 +72,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <SheetContent side="right" className="w-72 p-0 lg:hidden">
+          <SheetTitle className="sr-only">قائمة التنقل</SheetTitle>
           <div className="h-full overflow-y-auto">
             <AdminSidebar mobile />
           </div>

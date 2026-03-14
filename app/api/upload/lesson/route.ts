@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { writeFile, mkdir } from "fs/promises"
 import path from "path"
+import { checkDatabankQuota, registerDatabankFile } from "@/lib/databank"
 
 const UPLOAD_DIR = "public/uploads/lessons"
 const ALLOWED: Record<string, string[]> = {
@@ -10,11 +11,13 @@ const ALLOWED: Record<string, string[]> = {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
   ],
   video: ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"],
+  image: ["image/jpeg", "image/png", "image/webp", "image/gif"],
 }
 const MAX_SIZES: Record<string, number> = {
   pdf: 20 * 1024 * 1024,   // 20MB
   word: 20 * 1024 * 1024,  // 20MB
   video: 500 * 1024 * 1024, // 500MB
+  image: 10 * 1024 * 1024, // 10MB
 }
 
 export async function POST(request: Request) {
@@ -44,10 +47,22 @@ export async function POST(request: Request) {
       )
     }
 
+    const quota = await checkDatabankQuota(file.size)
+    if (!quota.ok) {
+      return NextResponse.json(
+        {
+          error: `تجاوز حد التخزين (100 جيجا). المستخدم: ${(quota.used / 1024 / 1024 / 1024).toFixed(2)} جيجا.`,
+        },
+        { status: 507 }
+      )
+    }
+
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    const ext = path.extname(file.name) || (type === "pdf" ? ".pdf" : type === "word" ? ".docx" : ".mp4")
+    const ext =
+      path.extname(file.name) ||
+      (type === "pdf" ? ".pdf" : type === "word" ? ".docx" : type === "image" ? ".jpg" : ".mp4")
     const filename = `${type}-${Date.now()}${ext}`
     const uploadPath = path.join(process.cwd(), UPLOAD_DIR, filename)
 
@@ -55,6 +70,13 @@ export async function POST(request: Request) {
     await writeFile(uploadPath, buffer)
 
     const url = `/uploads/lessons/${filename}`
+    const fileType = type as "pdf" | "word" | "video" | "image"
+    await registerDatabankFile({
+      path: url,
+      originalName: file.name,
+      type: fileType,
+      size: file.size,
+    })
     return NextResponse.json({ url, originalName: file.name })
   } catch (error) {
     console.error("Lesson upload error", error)

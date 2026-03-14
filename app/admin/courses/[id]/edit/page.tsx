@@ -133,6 +133,14 @@ export default function EditCoursePage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label>الصورة المصغرة (صورة الغلاف)</Label>
+              <CoverImageUpload
+                value={form.coverImageUrl}
+                onChange={(url) => setForm((f) => ({ ...f, coverImageUrl: url }))}
+              />
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="titleAr">العنوان (عربي)</Label>

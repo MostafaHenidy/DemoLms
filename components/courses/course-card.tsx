@@ -171,7 +171,7 @@ export default function CourseCard({ course }: CourseCardProps) {
               </Link>
             ) : (
               <>
-                <Button onClick={() => addToCart(course.id)} className="flex-1 h-11 rounded-xl bg-[#2563EB] text-white hover:bg-[#1D4ED8] font-semibold gap-2">
+                <Button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(String(course.id)) }} className="flex-1 h-11 rounded-xl bg-[#2563EB] text-white hover:bg-[#1D4ED8] font-semibold gap-2">
                   {locale === "ar" ? "أضف للسلة" : "Add to Cart"}
                 </Button>
                 <Link href={`/courses/${course.id}`}>

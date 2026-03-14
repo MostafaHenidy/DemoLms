@@ -210,10 +210,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Cart
   const addToCart = useCallback((courseId: string) => {
+    const id = String(courseId)
+    if (!id) return
     setCart((prev) => {
-      if (prev.some((i) => i.courseId === courseId)) return prev
+      if (prev.some((i) => i.courseId === id)) return prev
       showToast("تمت الإضافة إلى السلة ✓")
-      return [...prev, { courseId }]
+      return [...prev, { courseId: id }]
     })
   }, [showToast])
 
@@ -253,20 +255,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     try {
       const userIdNum = Number(user.id)
-      for (const item of cart) {
-        const res = await fetch("/api/enrollment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: userIdNum, courseId: Number(item.courseId) }),
-        })
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}))
-          console.error("Enrollment failed", res.status, data)
-          showToast(data?.error ?? "حدث خطأ أثناء إتمام الشراء", "error")
-          return false
-        }
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: userIdNum,
+          items: cart.map((i) => ({ courseId: Number(i.courseId) })),
+          gateway: "cart",
+          couponCode: appliedCoupon?.code ?? null,
+          discountAmount: appliedCoupon?.discountAmount ?? 0,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        console.error("Checkout failed", res.status, data)
+        showToast(data?.error ?? "حدث خطأ أثناء إتمام الشراء", "error")
+        return false
       }
-      await syncEnrollments(Number(user.id))
+      await syncEnrollments(userIdNum)
       setCart([])
       setAppliedCouponState(null)
       showToast("تم الشراء بنجاح! يمكنك الآن البدء بالتعلم 🎓")
@@ -276,7 +282,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       showToast("حدث خطأ أثناء إتمام الشراء", "error")
       return false
     }
-  }, [cart, purchasedCourses, showToast, user, syncEnrollments])
+  }, [cart, purchasedCourses, showToast, user, syncEnrollments, appliedCoupon])
 
   // Wishlist
   const toggleWishlist = useCallback((courseId: string) => {

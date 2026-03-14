@@ -31,12 +31,15 @@ model achievement {
 }
 
 model admin {
-  id           Int      @id @default(autoincrement())
-  name         String
-  email        String   @unique(map: "Admin_email_key")
-  passwordHash String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime
+  id               Int          @id @default(autoincrement())
+  name             String
+  email            String       @unique(map: "Admin_email_key")
+  passwordHash     String
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime
+  livesession_created livesession[]
+  chatConversationsAsCounterpart chatconversation[]
+  chatMessages     chatmessage[]
 }
 
 model attendance {
@@ -134,6 +137,7 @@ model course {
   user          user?           @relation(fields: [instructorId], references: [id], map: "Course_instructorId_fkey")
   coursesection coursesection[]
   enrollment    enrollment[]
+  livesession   livesession[]
   payment       payment[]
   wishlistitem  wishlistitem[]
 
@@ -326,6 +330,7 @@ model enrollment {
   purchasedAt DateTime          @default(now())
   course      course            @relation(fields: [courseId], references: [id], onDelete: Cascade, map: "Enrollment_courseId_fkey")
   user        user              @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Enrollment_userId_fkey")
+  payment     payment?
 
   @@unique([userId, courseId], map: "Enrollment_userId_courseId_key")
   @@index([courseId], map: "Enrollment_courseId_fkey")
@@ -338,6 +343,33 @@ model event {
   timeLabelAr String
   timeLabelEn String
   createdAt   DateTime @default(now())
+}
+
+model databankfolder {
+  id        Int             @id @default(autoincrement())
+  name      String
+  parentId  Int?
+  order     Int             @default(0)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  parent    databankfolder? @relation("DatabankFolderToFolder", fields: [parentId], references: [id], onDelete: Cascade, map: "DatabankFolder_parentId_fkey")
+  children  databankfolder[] @relation("DatabankFolderToFolder")
+  files     databankfile[]
+
+  @@index([parentId], map: "DatabankFolder_parentId_fkey")
+}
+
+model databankfile {
+  id           Int            @id @default(autoincrement())
+  folderId     Int?
+  path         String         // e.g. /uploads/cover-xxx.jpg or /uploads/lessons/pdf-xxx.pdf
+  originalName String
+  type         String         // pdf | word | image | video
+  size         Int            @default(0) // bytes, for quota (100 GB total)
+  createdAt    DateTime       @default(now())
+  folder       databankfolder? @relation(fields: [folderId], references: [id], onDelete: SetNull, map: "DatabankFile_folderId_fkey")
+
+  @@index([folderId], map: "DatabankFile_folderId_fkey")
 }
 
 model instructor {
@@ -367,23 +399,63 @@ model notification {
   @@index([userId], map: "Notification_userId_fkey")
 }
 
+model chatconversation {
+  id                  Int       @id @default(autoincrement())
+  studentId           Int
+  counterpartType     String    // "admin" | "teacher"
+  counterpartAdminId  Int?
+  counterpartUserId   Int?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  student             user      @relation(fields: [studentId], references: [id], onDelete: Cascade, map: "ChatConversation_studentId_fkey")
+  counterpartAdmin    admin?    @relation(fields: [counterpartAdminId], references: [id], onDelete: Cascade, map: "ChatConversation_counterpartAdminId_fkey")
+  counterpartUser     user?     @relation("ChatConversationTeacher", fields: [counterpartUserId], references: [id], onDelete: Cascade, map: "ChatConversation_counterpartUserId_fkey")
+  messages            chatmessage[]
+
+  @@index([studentId], map: "ChatConversation_studentId_fkey")
+  @@index([counterpartAdminId], map: "ChatConversation_counterpartAdminId_fkey")
+  @@index([counterpartUserId], map: "ChatConversation_counterpartUserId_fkey")
+}
+
+model chatmessage {
+  id             Int                @id @default(autoincrement())
+  conversationId Int
+  senderType     String             // "student" | "admin" | "teacher"
+  senderUserId   Int?
+  senderAdminId Int?
+  body           String
+  createdAt      DateTime           @default(now())
+  conversation   chatconversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade, map: "ChatMessage_conversationId_fkey")
+  senderUser     user?              @relation(fields: [senderUserId], references: [id], onDelete: SetNull, map: "ChatMessage_senderUserId_fkey")
+  senderAdmin    admin?             @relation(fields: [senderAdminId], references: [id], onDelete: SetNull, map: "ChatMessage_senderAdminId_fkey")
+
+  @@index([conversationId], map: "ChatMessage_conversationId_fkey")
+}
+
 model payment {
-  id        Int            @id @default(autoincrement())
-  userId    Int
-  courseId  Int
-  amount    Int
-  status    payment_status @default(pending)
-  itemType  String         @default("course")
-  itemId    Int?
-  itemName  String?
-  userName  String?
-  userEmail String?
-  createdAt DateTime       @default(now())
-  course    course         @relation(fields: [courseId], references: [id], onDelete: Cascade, map: "Payment_courseId_fkey")
-  user      user           @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Payment_userId_fkey")
+  id              Int            @id @default(autoincrement())
+  userId          Int
+  courseId        Int
+  amount          Int
+  status          payment_status @default(pending)
+  itemType        String         @default("course")
+  itemId          Int?
+  itemName        String?
+  userName        String?
+  userEmail       String?
+  gateway         String?        // e.g. "cart", "stripe", "moyasar", "tamara"
+  couponCode      String?
+  discountAmount  Int?           @default(0) // amount discounted for this payment
+  transactionId   String?        // external gateway reference
+  enrollmentId    Int?           @unique
+  createdAt       DateTime       @default(now())
+  course          course         @relation(fields: [courseId], references: [id], onDelete: Cascade, map: "Payment_courseId_fkey")
+  user            user           @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Payment_userId_fkey")
+  enrollment      enrollment?    @relation(fields: [enrollmentId], references: [id], onDelete: SetNull, map: "Payment_enrollmentId_fkey")
 
   @@index([courseId], map: "Payment_courseId_fkey")
   @@index([userId], map: "Payment_userId_fkey")
+  @@index([enrollmentId], map: "Payment_enrollmentId_fkey")
 }
 
 model teachersalarysettings {
@@ -422,11 +494,57 @@ model user {
   cartitem           cartitem[]
   course             course[]
   enrollment         enrollment[]
+  chatConversationsAsStudent chatconversation[]
+  chatConversationsAsTeacher chatconversation[] @relation("ChatConversationTeacher")
+  chatMessages       chatmessage[]
   examsubmission     examsubmission[]
   homeworksubmission homeworksubmission[]
+  livesession_created  livesession[]
+  livesessionbooking  livesessionbooking[]
   notification       notification[]
   payment            payment[]
   wishlistitem       wishlistitem[]
+}
+
+model livesession {
+  id               Int       @id @default(autoincrement())
+  titleAr          String
+  titleEn          String
+  scheduledAt      DateTime  // date and time
+  durationMinutes  Int       @default(60)
+  maxSeats         Int       @default(50)
+  provider         String    // "zoom" | "google_meet"
+  meetingId        String?   // Zoom meeting id or Meet event id
+  meetingUrl       String?   // join link for students
+  meetingPassword  String?   // Zoom passcode if any
+  courseId         Int?
+  createdByUserId  Int?      // teacher (user)
+  createdByAdminId Int?      // or admin
+  noRecording      Boolean   @default(true) // session must not be recorded or shared
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  course           course?   @relation(fields: [courseId], references: [id], onDelete: SetNull, map: "LiveSession_courseId_fkey")
+  createdBy        user?     @relation(fields: [createdByUserId], references: [id], onDelete: SetNull, map: "LiveSession_createdByUserId_fkey")
+  createdByAdmin   admin?    @relation(fields: [createdByAdminId], references: [id], onDelete: SetNull, map: "LiveSession_createdByAdminId_fkey")
+  bookings         livesessionbooking[]
+
+  @@index([courseId], map: "LiveSession_courseId_fkey")
+  @@index([createdByUserId], map: "LiveSession_createdByUserId_fkey")
+  @@index([createdByAdminId], map: "LiveSession_createdByAdminId_fkey")
+  @@index([scheduledAt], map: "LiveSession_scheduledAt_fkey")
+}
+
+model livesessionbooking {
+  id        Int         @id @default(autoincrement())
+  sessionId Int
+  userId    Int
+  createdAt DateTime    @default(now())
+  session   livesession @relation(fields: [sessionId], references: [id], onDelete: Cascade, map: "LiveSessionBooking_sessionId_fkey")
+  user      user        @relation(fields: [userId], references: [id], onDelete: Cascade, map: "LiveSessionBooking_userId_fkey")
+
+  @@unique([sessionId, userId], map: "LiveSessionBooking_sessionId_userId_key")
+  @@index([sessionId], map: "LiveSessionBooking_sessionId_fkey")
+  @@index([userId], map: "LiveSessionBooking_userId_fkey")
 }
 
 model wishlistitem {

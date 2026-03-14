@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Search, SlidersHorizontal, Grid3X3, LayoutGrid, BookOpen, GraduationCap, Star, Users, Sparkles, TrendingUp, Award } from "lucide-react"
 import { useI18n } from "@/lib/i18n"
 import { coursesData } from "@/lib/data"
 import { Navbar } from "@/components/navbar/navbar"
 import { Footer } from "@/components/footer/footer"
-import CourseCard from "@/components/courses/course-card"
+import CourseCard, { type CourseData } from "@/components/courses/course-card"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -52,9 +52,24 @@ export default function CoursesPage() {
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState<string>("all")
   const [sort, setSort] = useState<SortOption>("popular")
+  const [apiCourses, setApiCourses] = useState<CourseData[]>([])
+
+  useEffect(() => {
+    fetch("/api/courses?limit=200")
+      .then((r) => r.json())
+      .then((data) => {
+        const list = (data.courses ?? []) as CourseData[]
+        const byId = new Map<string, CourseData>()
+        list.forEach((c) => byId.set(c.id, c))
+        setApiCourses(Array.from(byId.values()))
+      })
+      .catch(() => setApiCourses([]))
+  }, [])
+
+  const sourceCourses = apiCourses.length > 0 ? apiCourses : coursesData
 
   const filtered = useMemo(() => {
-    let result = [...coursesData]
+    let result = [...sourceCourses]
 
     if (category !== "all") {
       result = result.filter((c) => c.category === category)
@@ -90,7 +105,7 @@ export default function CoursesPage() {
     }
 
     return result
-  }, [category, search, sort])
+  }, [category, search, sort, sourceCourses])
 
   const textReveal = {
     hidden: { opacity: 0, y: 40, filter: "blur(6px)" },

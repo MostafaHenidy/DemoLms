@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { writeFile, mkdir } from "fs/promises"
 import path from "path"
+import { checkDatabankQuota, registerDatabankFile } from "@/lib/databank"
 
 const UPLOAD_DIR = "public/uploads"
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
@@ -29,6 +30,16 @@ export async function POST(request: Request) {
       )
     }
 
+    const quota = await checkDatabankQuota(file.size)
+    if (!quota.ok) {
+      return NextResponse.json(
+        {
+          error: `تجاوز حد التخزين (100 جيجا). المستخدم: ${(quota.used / 1024 / 1024 / 1024).toFixed(2)} جيجا.`,
+        },
+        { status: 507 }
+      )
+    }
+
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
@@ -40,6 +51,12 @@ export async function POST(request: Request) {
     await writeFile(uploadPath, buffer)
 
     const url = `/uploads/${filename}`
+    await registerDatabankFile({
+      path: url,
+      originalName: file.name,
+      type: "image",
+      size: file.size,
+    })
     return NextResponse.json({ url })
   } catch (error) {
     console.error("Upload error", error)

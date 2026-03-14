@@ -89,7 +89,7 @@ export const coursesData = [
   },
   {
     id: "5",
-    thumbnail: "/course-1.png",
+    thumbnail: "/course-4.jpg",
     titleAr: "إدارة المشاريع الاحترافية",
     titleEn: "Professional Project Management",
     instructorAr: "محمد الحربي",

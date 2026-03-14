@@ -44,8 +44,12 @@ export async function POST(
       )
     }
 
-    if (!["pdf", "word"].includes(type)) {
-      return NextResponse.json({ error: "type must be pdf or word" }, { status: 400 })
+    const allowedTypes = ["pdf", "word", "image", "video"]
+    if (!allowedTypes.includes(type)) {
+      return NextResponse.json(
+        { error: "type must be pdf, word, image, or video" },
+        { status: 400 }
+      )
     }
 
     const attachment = await prisma.lessonattachment.create({

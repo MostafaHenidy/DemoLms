@@ -95,7 +95,7 @@ export default function NewCoursePage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label>صورة الغلاف</Label>
+              <Label>الصورة المصغرة (صورة الغلاف)</Label>
               <CoverImageUpload
                 value={form.coverImageUrl}
                 onChange={(url) => setForm((f) => ({ ...f, coverImageUrl: url }))}

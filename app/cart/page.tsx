@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
@@ -16,6 +16,8 @@ import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { AnimatedPageHero } from "@/components/ui/animated-page-hero"
 
+type CartCourse = (typeof coursesData)[number] & { id: string }
+
 export default function CartPage() {
   const { locale, dir, t } = useI18n()
   const { cart, removeFromCart, cartTotal, isLoggedIn, appliedCoupon, setAppliedCoupon } = useStore()
@@ -25,10 +27,34 @@ export default function CartPage() {
   const couponApplied = !!appliedCoupon
   const [couponError, setCouponError] = useState(false)
   const [couponLoading, setCouponLoading] = useState(false)
+  const [apiCourses, setApiCourses] = useState<CartCourse[]>([])
 
-  const cartItems = cart
-    .map((item) => coursesData.find((c) => c.id === item.courseId))
-    .filter(Boolean) as (typeof coursesData)[number][]
+  useEffect(() => {
+    fetch("/api/courses?limit=200")
+      .then((r) => r.json())
+      .then((data) => setApiCourses((data.courses ?? []).map((c: { id: string }) => ({ ...c, id: String(c.id) }))))
+      .catch(() => setApiCourses([]))
+  }, [])
+
+  const courseById = useMemo(() => {
+    const map = new Map<string, CartCourse>()
+    coursesData.forEach((c) => map.set(c.id, { ...c, id: c.id }))
+    apiCourses.forEach((c) => map.set(String(c.id), { ...c, id: String(c.id) }))
+    return map
+  }, [apiCourses])
+
+  const cartItems = useMemo(
+    () =>
+      cart
+        .map((item) => courseById.get(item.courseId))
+        .filter(Boolean) as CartCourse[],
+    [cart, courseById]
+  )
+
+  const resolvedSubtotal = useMemo(
+    () => cartItems.reduce((sum, c) => sum + (c?.price ?? 0), 0),
+    [cartItems]
+  )
 
   const handleApplyCoupon = async () => {
     const code = couponCode.trim().toUpperCase()
@@ -43,7 +69,7 @@ export default function CartPage() {
       const res = await fetch("/api/coupons/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, subtotal: cartTotal }),
+        body: JSON.stringify({ code, subtotal: resolvedSubtotal }),
       })
       const data = await res.json()
       if (data.valid && data.discountAmount !== undefined) {
@@ -67,7 +93,7 @@ export default function CartPage() {
     }
   }
 
-  const subtotal = cartTotal
+  const subtotal = resolvedSubtotal
   const discount = appliedCoupon
     ? appliedCoupon.discountType === "percentage"
       ? Math.round(subtotal * (appliedCoupon.discountValue / 100))
